@@ -1,0 +1,28 @@
+name: Unpack project
+on:
+  push:
+    paths:
+      - 'forthpoint.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          test -f forthpoint.zip
+          python3 -c "import zipfile; zipfile.ZipFile('forthpoint.zip').extractall('.')"
+          rm forthpoint.zip
+          for f in package.json src/app/layout.tsx src/app/globals.css tsconfig.json; do
+            test -f "$f" || { echo "ERROR: $f is missing. Upload the complete forthpoint.zip, not a partial one."; exit 1; }
+          done
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "No changes to commit"; exit 0; fi
+          git commit -m "Unpack project update"
+          git pull --rebase origin main
+          git push
